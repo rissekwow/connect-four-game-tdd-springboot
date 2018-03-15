@@ -1,4 +1,4 @@
-package wt.connectfourgame.model;
+package wt.connectfourgame.model.states;
 
 public class Cell {
 
