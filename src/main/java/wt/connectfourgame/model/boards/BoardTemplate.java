@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import wt.connectfourgame.exception.CellColumnIsFullException;
+import wt.connectfourgame.exception.InvalidColumnNumberException;
 import wt.connectfourgame.model.states.Cell;
 import wt.connectfourgame.model.states.CellState;
 import wt.connectfourgame.model.states.GameState;
@@ -17,14 +18,15 @@ public abstract class BoardTemplate implements Board {
 	private int xSize;
 	private int ySize;
 
-	private Cell[][] cellBoard;
-	private Map<Integer, List<Cell>> boardCols;
+	protected Cell[][] cellBoard;
+	protected Map<Integer, List<Cell>> boardCols;
 
 	@Override
-	public abstract boolean isAddToColAvailable(int colNumber);
+	public abstract boolean isAddToColAvailable(int colNumber) throws InvalidColumnNumberException;
 
 	@Override
-	public abstract void addCell(int colNumber, CellState color) throws CellColumnIsFullException;
+	public abstract void addCell(int colNumber, CellState color)
+			throws CellColumnIsFullException, InvalidColumnNumberException;
 
 	@Override
 	public abstract GameState getGameState();
@@ -44,7 +46,7 @@ public abstract class BoardTemplate implements Board {
 				boardCols.get(x).add(cellBoard[x][y]);
 			}
 		}
-		
+
 	}
 
 	protected void initCellBoard() {

@@ -13,6 +13,7 @@ import org.mockito.junit.MockitoRule;
 
 import info.solidsoft.mockito.java8.api.WithBDDMockito;
 import wt.connectfourgame.exception.CellColumnIsFullException;
+import wt.connectfourgame.exception.InvalidColumnNumberException;
 import wt.connectfourgame.fixtures.CellFixture;
 import wt.connectfourgame.model.boards.Board;
 import wt.connectfourgame.model.boards.Board7x6;
@@ -29,7 +30,7 @@ public class Board7x6Test implements WithAssertions, WithBDDMockito {
 	private Map<Integer, List<Cell>> boardCols;
 
 	@InjectMocks
-	private Board7x6 board;
+	private Board7x6 boardMock;
 
 	private final CellState R = CellState.RED;
 	private final CellState Y = CellState.YELLOW;
@@ -51,59 +52,77 @@ public class Board7x6Test implements WithAssertions, WithBDDMockito {
 	}
 
 	@Test
-	public void isAddToColAvailable() {
+	public void isAddToColAvailable() throws InvalidColumnNumberException {
 		// given
 		List<Cell> cellList = CellFixture.generateCellList(R, Y, R, Y, R, E);
 		// when
 		when(boardCols.get(0)).thenReturn(cellList);
 		// then
-		assertThat(board.isAddToColAvailable(0)).isEqualTo(true);
+		assertThat(boardMock.isAddToColAvailable(0)).isEqualTo(true);
 	}
 
 	@Test
-	public void isAddToColNonAvailable() {
+	public void isAddToColNonAvailable() throws InvalidColumnNumberException {
 		// given
 		List<Cell> cellList = CellFixture.generateCellList(R, Y, R, Y, R, Y);
 		// when
 		when(boardCols.get(0)).thenReturn(cellList);
 		// then
-		assertThat(board.isAddToColAvailable(0)).isEqualTo(false);
+		assertThat(boardMock.isAddToColAvailable(0)).isEqualTo(false);
+	}
+	
+	@Test
+	public void isAddToColThrowInvalidColumnNumberException() {
+		Board board = new Board7x6();
+		assertThatThrownBy(() -> {
+			board.isAddToColAvailable(80);
+		}).isInstanceOf(InvalidColumnNumberException.class)
+				.hasMessageContaining("The column number [80] does not exist.");
 	}
 
 	@Test
-	public void addCell() throws CellColumnIsFullException {
+	public void addCell() throws CellColumnIsFullException, InvalidColumnNumberException {
 		// given
 		List<Cell> cellList = CellFixture.generateCellList(E, E, E, E, E, E);
 		// when
 		when(boardCols.get(0)).thenReturn(cellList);
-		board.addCell(0, Y);
+		boardMock.addCell(0, Y);
 		// then
 		assertThat(boardCols.get(0)).extracting(c -> c.getCellState()).containsExactly(Y, E, E, E, E, E);
 
-		board.addCell(0, R);
+		boardMock.addCell(0, R);
 		// then
 		assertThat(boardCols.get(0)).extracting(c -> c.getCellState()).containsExactly(Y, R, E, E, E, E);
 
-		board.addCell(0, R);
+		boardMock.addCell(0, R);
 		// then
 		assertThat(boardCols.get(0)).extracting(c -> c.getCellState()).containsExactly(Y, R, R, E, E, E);
 
-		board.addCell(0, Y);
+		boardMock.addCell(0, Y);
 		// then
 		assertThat(boardCols.get(0)).extracting(c -> c.getCellState()).containsExactly(Y, R, R, Y, E, E);
 
-		board.addCell(0, R);
+		boardMock.addCell(0, R);
 		// then
 		assertThat(boardCols.get(0)).extracting(c -> c.getCellState()).containsExactly(Y, R, R, Y, R, E);
 
-		board.addCell(0, R);
+		boardMock.addCell(0, R);
 		// then
 		assertThat(boardCols.get(0)).extracting(c -> c.getCellState()).containsExactly(Y, R, R, Y, R, R);
 
 		assertThatThrownBy(() -> {
-			board.addCell(0, Y);
+			boardMock.addCell(0, Y);
 		}).isInstanceOf(CellColumnIsFullException.class)
-				.hasMessageContaining("Cell columns is filled with unempty cells");
+				.hasMessageContaining("Cell columns is filled with unempty cells.");
+	}
+	
+	@Test
+	public void isAddCellThrowInvalidColumnNumberException() {
+		Board board = new Board7x6();
+		assertThatThrownBy(() -> {
+			board.addCell(80, Y);
+		}).isInstanceOf(InvalidColumnNumberException.class)
+				.hasMessageContaining("The column number [80] does not exist.");
 	}
 
 	@Test
@@ -131,7 +150,7 @@ public class Board7x6Test implements WithAssertions, WithBDDMockito {
 		when(boardCols.get(5)).thenReturn(cellList6);
 		when(boardCols.get(6)).thenReturn(cellList7);
 		// then
-		assertThat(board.getGameState()).isEqualTo(GameState.DRAW);
+		assertThat(boardMock.getGameState()).isEqualTo(GameState.DRAW);
 	}
 
 	@Test
@@ -153,7 +172,7 @@ public class Board7x6Test implements WithAssertions, WithBDDMockito {
 		when(boardCols.get(5)).thenReturn(cellList6);
 		when(boardCols.get(6)).thenReturn(cellList7);
 		// then
-		assertThat(board.getGameState()).isEqualTo(GameState.RED_WIN);
+		assertThat(boardMock.getGameState()).isEqualTo(GameState.RED_WIN);
 	}
 
 	@Test
@@ -175,7 +194,7 @@ public class Board7x6Test implements WithAssertions, WithBDDMockito {
 		when(boardCols.get(5)).thenReturn(cellList6);
 		when(boardCols.get(6)).thenReturn(cellList7);
 		// then
-		assertThat(board.getGameState()).isEqualTo(GameState.YELLOW_WIN);
+		assertThat(boardMock.getGameState()).isEqualTo(GameState.YELLOW_WIN);
 	}
 
 }
