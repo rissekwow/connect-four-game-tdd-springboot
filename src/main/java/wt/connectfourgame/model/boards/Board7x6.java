@@ -1,9 +1,10 @@
 package wt.connectfourgame.model.boards;
 
+import wt.connectfourgame.exception.CellColumnIsFullException;
 import wt.connectfourgame.model.states.CellState;
 import wt.connectfourgame.model.states.GameState;
 
-public class Board7x6 extends BoardTemplate{
+public class Board7x6 extends BoardTemplate {
 
 	private static final int xSize = 7;
 	private static final int ySize = 6;
@@ -18,7 +19,7 @@ public class Board7x6 extends BoardTemplate{
 		return false;
 	}
 
-	public void addCell(int colNumber, CellState color) {
+	public void addCell(int colNumber, CellState color) throws CellColumnIsFullException {
 
 	}
 

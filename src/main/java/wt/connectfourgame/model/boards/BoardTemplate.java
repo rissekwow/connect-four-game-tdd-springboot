@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import wt.connectfourgame.exception.CellColumnIsFullException;
 import wt.connectfourgame.model.states.Cell;
 import wt.connectfourgame.model.states.CellState;
 import wt.connectfourgame.model.states.GameState;
@@ -23,7 +24,7 @@ public abstract class BoardTemplate implements Board {
 	public abstract boolean isAddToColAvailable(int colNumber);
 
 	@Override
-	public abstract void addCell(int colNumber, CellState color);
+	public abstract void addCell(int colNumber, CellState color) throws CellColumnIsFullException;
 
 	@Override
 	public abstract GameState getGameState();
