@@ -10,7 +10,7 @@ import wt.connectfourgame.model.states.CellState;
 import wt.connectfourgame.model.states.GameState;
 
 public interface Board {
-
+	
 	List<Cell> cellBoardToList();
 
 	Map<Integer, List<Cell>> getBoardCols();
