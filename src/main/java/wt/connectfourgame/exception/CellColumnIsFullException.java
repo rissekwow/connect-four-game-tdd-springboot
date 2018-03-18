@@ -1,6 +1,8 @@
 package wt.connectfourgame.exception;
 
-public class CellColumnIsFullException extends Exception {
+import java.io.Serializable;
+
+public class CellColumnIsFullException extends Exception implements Serializable{
 
 	private static final long serialVersionUID = 1L;
 

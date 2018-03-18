@@ -1,6 +1,8 @@
 package wt.connectfourgame.exception;
 
-public class InvalidColumnNumberException extends Exception {
+import java.io.Serializable;
+
+public class InvalidColumnNumberException extends Exception implements Serializable{
 
 	private static final long serialVersionUID = 1L;
 

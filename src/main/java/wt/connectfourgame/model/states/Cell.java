@@ -1,7 +1,14 @@
 package wt.connectfourgame.model.states;
 
-public class Cell {
+import java.io.Serializable;
 
+import lombok.EqualsAndHashCode;
+
+@EqualsAndHashCode
+public class Cell implements Serializable{
+
+	private static final long serialVersionUID = 1L;
+	
 	private CellState cellState;
 	private int x;
 	private int y;

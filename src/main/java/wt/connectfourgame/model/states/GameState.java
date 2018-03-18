@@ -1,5 +1,7 @@
 package wt.connectfourgame.model.states;
 
-public enum GameState {
+import java.io.Serializable;
+
+public enum GameState implements Serializable{
 	RED_WIN, YELLOW_WIN, DRAW, OPEN
 }
