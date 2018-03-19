@@ -40,7 +40,7 @@ public class GameManager {
 		return opponentQueue.registerNickname(registerCommand.getNickname());
 	}
 
-	public GameEntity createGame(String token1, String token2) {
+	public void createGame(String token1, String token2) {
 		Board board = new Board7x6(new GameStateCalculateUsingDiagonals());
 		GameEntity gameEntity = new GameEntity();
 		gameEntity.setPlayerRedToken(token1);
@@ -48,7 +48,7 @@ public class GameManager {
 		gameEntity.setRedMove(true);
 		gameEntity.setGameState(board.getGameState());
 		gameEntity.setSerializedBoard(boardSerializator.serializeBoardToBytes(board));
-		return gameEntityRepository.save(gameEntity);
+		gameEntityRepository.save(gameEntity);
 	}
 
 }

@@ -29,15 +29,18 @@ public class OpponentQueue {
 		return Optional.of(entry);
 	}
 
+	@Synchronized
 	public Entry<String, String> registerNickname(String nickname) throws NicknameIsAlreadyInUseException {
 		if (isNicknameExist(nickname))
 			throw new NicknameIsAlreadyInUseException(nickname);
+		System.out.println("Size : "+nicknameMap.size());
 		nicknameMap.put(nickname, UUID.randomUUID().toString());
+		System.out.println("After : "+nicknameMap.size());
 		return nicknameMap.entrySet().iterator().next();
 	}
 
 	private boolean isNicknameExist(String nickname) {
-		return nickname.contains(nickname);
+		return nicknameMap.containsKey(nickname);
 	}
 
 }
