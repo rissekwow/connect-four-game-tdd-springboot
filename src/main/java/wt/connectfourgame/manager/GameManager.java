@@ -6,12 +6,19 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import wt.connectfourgame.command.PlayerMoveCommand;
 import wt.connectfourgame.command.RegisterCommand;
 import wt.connectfourgame.entity.GameEntity;
+import wt.connectfourgame.exception.CellColumnIsFullException;
+import wt.connectfourgame.exception.GameNotExistException;
+import wt.connectfourgame.exception.InvalidColumnNumberException;
+import wt.connectfourgame.exception.IsNotYourMoveException;
 import wt.connectfourgame.exception.NicknameIsAlreadyInUseException;
 import wt.connectfourgame.model.boards.Board;
 import wt.connectfourgame.model.boards.Board7x6;
 import wt.connectfourgame.model.boards.GameStateCalculateUsingDiagonals;
+import wt.connectfourgame.model.states.CellState;
+import wt.connectfourgame.model.states.GameState;
 import wt.connectfourgame.queue.OpponentQueue;
 import wt.connectfourgame.repository.GameEntityRepository;
 import wt.connectfourgame.serialize.BoardSerializator;
@@ -49,6 +56,33 @@ public class GameManager {
 		gameEntity.setGameState(board.getGameState());
 		gameEntity.setSerializedBoard(boardSerializator.serializeBoardToBytes(board));
 		gameEntityRepository.save(gameEntity);
+	}
+
+	public PlayerMoveCommand progressMove(PlayerMoveCommand playerMoveCommand) throws GameNotExistException,
+			IsNotYourMoveException, CellColumnIsFullException, InvalidColumnNumberException {
+		Optional<GameEntity> gameEntity = gameEntityRepository.findByPlayerRedToken(playerMoveCommand.getToken());
+		boolean isRedPlayer = gameEntity.isPresent();
+		if (!gameEntity.isPresent())
+			gameEntity = gameEntityRepository.findByPlayerYellowToken(playerMoveCommand.getToken());
+		if (!gameEntity.isPresent())
+			throw new GameNotExistException();
+		GameEntity entity = gameEntity.get();
+		if (isRedPlayer != entity.isRedMove())
+			throw new IsNotYourMoveException();
+		Board board = boardSerializator.deserializeBytesToBoard(entity.getSerializedBoard());
+		board.addCell(playerMoveCommand.getColNumber(), isRedPlayer ? CellState.RED : CellState.YELLOW);
+		GameState gameState = board.getGameState();
+		entity.setGameState(gameState);
+		entity.setRedMove(!isRedPlayer);
+		entity.setSerializedBoard(boardSerializator.serializeBoardToBytes(board));
+		gameEntityRepository.save(entity);
+		
+		PlayerMoveCommand playerMoveCommandResponse = new PlayerMoveCommand();
+		playerMoveCommandResponse.setColNumber(playerMoveCommand.getColNumber());
+		playerMoveCommandResponse.setToken(isRedPlayer ? entity.getPlayerYellowToken() : entity.getPlayerRedToken());
+		playerMoveCommandResponse.setGameState(gameState.name());
+		
+		return playerMoveCommandResponse;
 	}
 
 }

@@ -1,72 +1,63 @@
 package wt.connectfourgame.controller;
 
-import static java.util.Arrays.asList;
-import static java.util.concurrent.TimeUnit.SECONDS;
-
-import java.lang.reflect.Type;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.AbstractMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.assertj.core.api.WithAssertions;
-import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.messaging.simp.stomp.StompFrameHandler;
-import org.springframework.messaging.simp.stomp.StompHeaders;
-import org.springframework.messaging.simp.stomp.StompSession;
-import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.web.socket.client.standard.StandardWebSocketClient;
-import org.springframework.web.socket.messaging.WebSocketStompClient;
-import org.springframework.web.socket.sockjs.client.SockJsClient;
-import org.springframework.web.socket.sockjs.client.WebSocketTransport;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import info.solidsoft.mockito.java8.api.WithBDDMockito;
+import wt.connectfourgame.command.PlayerMoveCommand;
 import wt.connectfourgame.command.RegisterCommand;
+import wt.connectfourgame.manager.GameManager;
 
-@RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@RunWith(SpringRunner.class)
 public class WebSocketGameControllerTest implements WithAssertions, WithBDDMockito{
 
-	static final String WEBSOCKET_URI = "ws://localhost:8080/websocket";
-    static final String WEBSOCKET_TOPIC = "/game";
-
-    BlockingQueue<String> blockingQueue;
-    WebSocketStompClient stompClient;
-
-    @Before
-    public void setup() {
-        blockingQueue = new LinkedBlockingDeque<>();
-        stompClient = new WebSocketStompClient(new SockJsClient(
-                asList(new WebSocketTransport(new StandardWebSocketClient()))));
-    }
-
-    @Test
-    public void shouldReceiveAMessageFromTheServer() throws Exception {
-        StompSession session = stompClient
-                .connect(WEBSOCKET_URI, new StompSessionHandlerAdapter() {})
-                .get(1, SECONDS);
-        session.subscribe(WEBSOCKET_TOPIC, new DefaultStompFrameHandler());
-
-        RegisterCommand registerCommand = new RegisterCommand();
-        registerCommand.setNickname("test");
-        session.send(WEBSOCKET_TOPIC, registerCommand);
-
-        Assert.assertEquals(registerCommand, blockingQueue.poll(1, SECONDS));
-    }
-
-    class DefaultStompFrameHandler implements StompFrameHandler {
-        @Override
-        public Type getPayloadType(StompHeaders stompHeaders) {
-            return byte[].class;
-        }
-
-        @Override
-        public void handleFrame(StompHeaders stompHeaders, Object o) {
-            blockingQueue.offer(new String((byte[]) o));
-        }
-    }
+	@Rule
+	public MockitoRule rule = MockitoJUnit.rule();
+	
+	@Mock
+	private GameManager gameManager;
+	
+	@Mock
+	private SimpMessageSendingOperations messagingTemplate;
+	
+	private WebSocketGameController webSocketGameController;
+	
+	private final String TEST_1_PLAYER = "TESTER";
+	private final String TEST_2_PLAYER = "USER";
+	private final String TEST_1_TOKEN = UUID.randomUUID().toString();
+	private final String TEST_2_TOKEN = UUID.randomUUID().toString();
+	
+	@Before
+	public void setup() {
+		webSocketGameController = new WebSocketGameController(messagingTemplate, gameManager);
+	}
+	
+	@Test
+	public void registerUserWithFindOpponent() {
+		RegisterCommand registerCommand = new RegisterCommand();
+		registerCommand.setNickname(TEST_1_PLAYER);
+		Map.Entry<String,String> entry =
+			    new AbstractMap.SimpleEntry<String, String>(TEST_2_PLAYER,TEST_2_TOKEN);
+		Optional<Entry<String,String>> optional = Optional.of(entry);
+		doReturn(optional).when(gameManager).findOpponent();
+		webSocketGameController.registerUserInQueue(registerCommand);
+		verify(messagingTemplate, times(1)).convertAndSend("/game/user/"+TEST_1_PLAYER, TEST_1_PLAYER);
+	}
 
 }

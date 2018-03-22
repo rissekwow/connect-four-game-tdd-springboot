@@ -33,9 +33,7 @@ public class OpponentQueue {
 	public Entry<String, String> registerNickname(String nickname) throws NicknameIsAlreadyInUseException {
 		if (isNicknameExist(nickname))
 			throw new NicknameIsAlreadyInUseException(nickname);
-		System.out.println("Size : "+nicknameMap.size());
 		nicknameMap.put(nickname, UUID.randomUUID().toString());
-		System.out.println("After : "+nicknameMap.size());
 		return nicknameMap.entrySet().iterator().next();
 	}
 

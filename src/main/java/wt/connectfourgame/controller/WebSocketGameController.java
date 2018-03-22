@@ -9,9 +9,14 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
 
-import wt.connectfourgame.command.GameStartCommand;
+import wt.connectfourgame.command.PlayerMoveCommand;
 import wt.connectfourgame.command.RegisterCommand;
-import wt.connectfourgame.entity.GameEntity;
+import wt.connectfourgame.command.ResponseCode;
+import wt.connectfourgame.command.ResponseStatusCommand;
+import wt.connectfourgame.exception.CellColumnIsFullException;
+import wt.connectfourgame.exception.GameNotExistException;
+import wt.connectfourgame.exception.InvalidColumnNumberException;
+import wt.connectfourgame.exception.IsNotYourMoveException;
 import wt.connectfourgame.exception.NicknameIsAlreadyInUseException;
 import wt.connectfourgame.manager.GameManager;
 import wt.connectfourgame.model.states.CellState;
@@ -22,10 +27,7 @@ public class WebSocketGameController {
 	private final SimpMessageSendingOperations messagingTemplate;
 	private final GameManager gameManager;
 	private final String USER_NICKNAME_LISTENER = "/game/user/";
-	private final String GAME_STARTED = "/start";
-	private final String GAME_MOVE = "/move";
-	private final String GAME_END = "/end";
-	private final String GAME_LEAVE = "/leave";
+	private final String TOKEN_MESSAGE = "/game/token/";
 
 	@Autowired
 	public WebSocketGameController(SimpMessageSendingOperations messagingTemplate, GameManager gameManager) {
@@ -34,37 +36,56 @@ public class WebSocketGameController {
 	}
 
 	@MessageMapping("/register")
-	public void registerUserInQueue(RegisterCommand registerCommand) throws NicknameIsAlreadyInUseException {
+	public void registerUserInQueue(RegisterCommand registerCommand) {
 		Optional<Entry<String, String>> opponent = gameManager.findOpponent();
+		System.out.println(opponent.isPresent());
 		if (!opponent.isPresent()) {
-			Entry<String, String> userEntry = gameManager.registerNickname(registerCommand);
-			messagingTemplate.convertAndSend(USER_NICKNAME_LISTENER + userEntry.getKey(), userEntry.getValue());
+			Entry<String, String> userEntry;
+			try {
+				userEntry = gameManager.registerNickname(registerCommand);
+				messagingTemplate.convertAndSend(USER_NICKNAME_LISTENER + registerCommand.getNickname(),
+						generateResponseCommand(ResponseCode.TOKEN_REGISTERED, userEntry.getValue()));
+			} catch (NicknameIsAlreadyInUseException e) {
+				messagingTemplate.convertAndSend(USER_NICKNAME_LISTENER + registerCommand.getNickname(),
+						generateResponseCommand(ResponseCode.ERROR, e.getMessage()));
+			}
 		} else {
 			String playerToken = UUID.randomUUID().toString();
 			messagingTemplate.convertAndSend(USER_NICKNAME_LISTENER + registerCommand.getNickname(), playerToken);
 			boolean isRegisterPlayerRed = Math.round(Math.random()) == 0;
-			GameStartCommand commandToRed = new GameStartCommand();
-			commandToRed.setYourColor(CellState.RED.name());
-			commandToRed.setYourMove(true);
-
-			GameStartCommand commandToYellow = new GameStartCommand();
-			commandToRed.setYourColor(CellState.YELLOW.name());
-			commandToRed.setYourMove(false);
 			if (isRegisterPlayerRed) {
 				gameManager.createGame(playerToken, opponent.get().getValue());
-				messagingTemplate.convertAndSend(playerToken + GAME_STARTED, commandToRed);
-				messagingTemplate.convertAndSend(opponent.get().getValue() + GAME_STARTED, commandToYellow);
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerToken,
+						generateResponseCommand(ResponseCode.GAME_STARTED, CellState.RED.name()));
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + opponent.get().getValue(), CellState.YELLOW.name());
 			} else {
 				gameManager.createGame(opponent.get().getValue(), playerToken);
-				messagingTemplate.convertAndSend(playerToken + GAME_STARTED, commandToYellow);
-				messagingTemplate.convertAndSend(opponent.get().getValue() + GAME_STARTED, commandToRed);
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerToken, CellState.YELLOW.name());
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + opponent.get().getValue(),
+						generateResponseCommand(ResponseCode.GAME_STARTED, CellState.RED.name()));
 			}
 		}
 	}
 
 	@MessageMapping("/move")
-	public void processGameMove(RegisterCommand registerCommand) throws NicknameIsAlreadyInUseException {
-		
+	public void processGameMove(PlayerMoveCommand playerMoveCommand) {
+		PlayerMoveCommand playerMoveCommandResponse;
+		try {
+			playerMoveCommandResponse = gameManager.progressMove(playerMoveCommand);
+			messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(), new Object());
+		} catch (GameNotExistException | IsNotYourMoveException | CellColumnIsFullException
+				| InvalidColumnNumberException e) {
+			messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
+					generateResponseCommand(ResponseCode.ERROR, e.getMessage()));
+		}
+	}
+	
+
+	private ResponseStatusCommand generateResponseCommand(ResponseCode responseCode, String message) {
+		ResponseStatusCommand responseStatusCommand = new ResponseStatusCommand();
+		responseStatusCommand.setResponseCode(responseCode.name());
+		responseStatusCommand.setMessage(message);
+		return responseStatusCommand;
 	}
 
 }
