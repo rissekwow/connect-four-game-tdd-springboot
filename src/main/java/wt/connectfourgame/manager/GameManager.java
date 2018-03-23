@@ -14,6 +14,7 @@ import wt.connectfourgame.exception.GameNotExistException;
 import wt.connectfourgame.exception.InvalidColumnNumberException;
 import wt.connectfourgame.exception.IsNotYourMoveException;
 import wt.connectfourgame.exception.NicknameIsAlreadyInUseException;
+import wt.connectfourgame.generator.TokenGenerator;
 import wt.connectfourgame.model.boards.Board;
 import wt.connectfourgame.model.boards.Board7x6;
 import wt.connectfourgame.model.boards.GameStateCalculateUsingDiagonals;
@@ -29,22 +30,36 @@ public class GameManager {
 	private OpponentQueue opponentQueue;
 	private BoardSerializator boardSerializator;
 	private GameEntityRepository gameEntityRepository;
+	private TokenGenerator tokenGenerator;
 
 	@Autowired
 	public GameManager(OpponentQueue opponentQueue, BoardSerializator boardSerializator,
-			GameEntityRepository gameEntityRepository) {
+			GameEntityRepository gameEntityRepository, TokenGenerator tokenGenerator) {
 		this.opponentQueue = opponentQueue;
 		this.boardSerializator = boardSerializator;
 		this.gameEntityRepository = gameEntityRepository;
+		this.tokenGenerator = tokenGenerator;
 	}
 
 	public Optional<Entry<String, String>> findOpponent() {
 		return opponentQueue.findOpponent();
 	}
 
-	public Entry<String, String> registerNickname(RegisterCommand registerCommand)
-			throws NicknameIsAlreadyInUseException {
-		return opponentQueue.registerNickname(registerCommand.getNickname());
+	public boolean areYouRedPlayer() {
+		return Math.round(Math.random()) == 0;
+	}
+
+	public void addNicknameToWaitingQueue(String nickname) {
+		System.out.println("adeed");
+		opponentQueue.addNicknameToWaitingQueue(nickname);
+	}
+
+	public void registerNickname(RegisterCommand registerCommand) throws NicknameIsAlreadyInUseException {
+		opponentQueue.registerNickname(registerCommand.getNickname(), tokenGenerator.generateToken());
+	}
+
+	public String getNicknameToken(String nickname) {
+		return opponentQueue.getNicknameToken(nickname);
 	}
 
 	public void createGame(String token1, String token2) {
@@ -76,12 +91,12 @@ public class GameManager {
 		entity.setRedMove(!isRedPlayer);
 		entity.setSerializedBoard(boardSerializator.serializeBoardToBytes(board));
 		gameEntityRepository.save(entity);
-		
+
 		PlayerMoveCommand playerMoveCommandResponse = new PlayerMoveCommand();
 		playerMoveCommandResponse.setColNumber(playerMoveCommand.getColNumber());
 		playerMoveCommandResponse.setToken(isRedPlayer ? entity.getPlayerYellowToken() : entity.getPlayerRedToken());
 		playerMoveCommandResponse.setGameState(gameState.name());
-		
+
 		return playerMoveCommandResponse;
 	}
 
