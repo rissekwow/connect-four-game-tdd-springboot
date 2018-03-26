@@ -50,7 +50,6 @@ public class GameManager {
 	}
 
 	public void addNicknameToWaitingQueue(String nickname) {
-		System.out.println("adeed");
 		opponentQueue.addNicknameToWaitingQueue(nickname);
 	}
 

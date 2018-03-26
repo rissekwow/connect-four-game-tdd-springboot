@@ -40,7 +40,7 @@ public class WebSocketGameController {
 		Optional<Entry<String, String>> opponent = gameManager.findOpponent();
 		if (!opponent.isPresent())
 			gameManager.addNicknameToWaitingQueue(registerCommand.getNickname());
-		opponent.ifPresent(o -> createNewGameAndSendMessagesToPlayers(registerCommand, opponent));
+		opponent.ifPresent(o -> createNewGameAndSendMessagesToPlayers(registerCommand, o));
 	}
 	
 	@MessageMapping("/move")
@@ -56,7 +56,7 @@ public class WebSocketGameController {
 	}
 
 	private void createNewGameAndSendMessagesToPlayers(RegisterCommand registerCommand,
-			Optional<Entry<String, String>> opponent) {
+			Entry<String, String> opponent) {
 		String playerToken = gameManager.getNicknameToken(registerCommand.getNickname());
 		boolean isRegisterPlayerRed = gameManager.areYouRedPlayer();
 		if (isRegisterPlayerRed)
@@ -77,21 +77,21 @@ public class WebSocketGameController {
 		}
 	}
 
-	private void createGameAndSendStartMessageWhenRequesterPlayerIsYellow(Optional<Entry<String, String>> opponent,
+	private void createGameAndSendStartMessageWhenRequesterPlayerIsYellow(Entry<String, String> opponent,
 			String playerToken) {
-		gameManager.createGame(opponent.get().getValue(), playerToken);
+		gameManager.createGame(opponent.getValue(), playerToken);
 		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerToken,
 				generateResponseCommand(ResponseCode.GAME_STARTED, CellState.YELLOW.name()));
-		messagingTemplate.convertAndSend(TOKEN_MESSAGE + opponent.get().getValue(),
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + opponent.getValue(),
 				generateResponseCommand(ResponseCode.GAME_STARTED, CellState.RED.name()));
 	}
 
-	private void createGameAndSendStartMessageWhenRequesterPlayerIsRed(Optional<Entry<String, String>> opponent,
+	private void createGameAndSendStartMessageWhenRequesterPlayerIsRed(Entry<String, String> opponent,
 			String playerToken) {
-		gameManager.createGame(playerToken, opponent.get().getValue());
+		gameManager.createGame(playerToken, opponent.getValue());
 		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerToken,
 				generateResponseCommand(ResponseCode.GAME_STARTED, CellState.RED.name()));
-		messagingTemplate.convertAndSend(TOKEN_MESSAGE + opponent.get().getValue(),
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + opponent.getValue(),
 				generateResponseCommand(ResponseCode.GAME_STARTED, CellState.YELLOW.name()));
 	}
 
