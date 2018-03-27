@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import info.solidsoft.mockito.java8.api.WithBDDMockito;
+import wt.connectfourgame.command.GameEndedException;
 import wt.connectfourgame.command.PlayerMoveCommand;
 import wt.connectfourgame.entity.GameEntity;
 import wt.connectfourgame.exception.CellColumnIsFullException;
@@ -52,7 +53,7 @@ public class GameManagerTest implements WithAssertions, WithBDDMockito {
 
 	@Test
 	public void progressMove() throws GameNotExistException, IsNotYourMoveException, CellColumnIsFullException,
-			InvalidColumnNumberException {
+			InvalidColumnNumberException, GameEndedException {
 		int colNumber = 0;
 		gameManager.createGame(TOKEN_RED_TEST, TOKEN_YELLOW_TEST);
 		PlayerMoveCommand playerMoveCommand = new PlayerMoveCommand();
@@ -66,7 +67,7 @@ public class GameManagerTest implements WithAssertions, WithBDDMockito {
 		assertThat(board.getBoardCols().get(colNumber).get(0).getCellState()).isEqualTo(CellState.RED);
 		assertThat(gameEntity.isRedMove()).isFalse();
 		assertThat(playerMoveCommandResponse.getColNumber()).isEqualTo(colNumber);
-		assertThat(playerMoveCommandResponse.getGameState()).isEqualTo(GameState.OPEN.toString());
+		assertThat(playerMoveCommandResponse.getGameState()).isEqualTo(GameState.OPEN);
 		assertThat(playerMoveCommandResponse.getToken()).isEqualTo(TOKEN_YELLOW_TEST);
 	}
 

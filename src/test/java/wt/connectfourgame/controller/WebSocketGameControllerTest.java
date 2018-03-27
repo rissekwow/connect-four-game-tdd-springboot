@@ -114,5 +114,7 @@ public class WebSocketGameControllerTest implements WithAssertions, WithBDDMocki
 		verify(messagingTemplate, times(1)).convertAndSend(TOKEN_MESSAGE + gameManager.getNicknameToken(TEST_1_PLAYER),
 				commandFixture.generateResponseStatusCommand(ResponseCode.GAME_STARTED, CellState.RED.name()));
 	}
+	
+	
 
 }

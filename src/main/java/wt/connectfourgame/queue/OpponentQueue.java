@@ -42,6 +42,10 @@ public class OpponentQueue {
 		nicknameWaitingMap.put(nickname, nicknameMap.get(nickname));
 	}
 
+	public void removeNicknameByToken(String token) {
+		nicknameMap.values().removeIf(value -> value.equals(token));
+	}
+
 	@Synchronized
 	public String getNicknameToken(String nickname) {
 		return nicknameMap.get(nickname);

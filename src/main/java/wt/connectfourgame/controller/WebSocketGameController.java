@@ -8,6 +8,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
 
+import wt.connectfourgame.command.GameEndedException;
 import wt.connectfourgame.command.PlayerMoveCommand;
 import wt.connectfourgame.command.RegisterCommand;
 import wt.connectfourgame.command.ResponseCode;
@@ -42,14 +43,40 @@ public class WebSocketGameController {
 			gameManager.addNicknameToWaitingQueue(registerCommand.getNickname());
 		opponent.ifPresent(o -> createNewGameAndSendMessagesToPlayers(registerCommand, o));
 	}
-	
+
 	@MessageMapping("/move")
 	public void processGameMove(PlayerMoveCommand playerMoveCommand) {
 		try {
 			PlayerMoveCommand playerMoveCommandResponse = gameManager.progressMove(playerMoveCommand);
-			messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(), new Object());
+			switch (playerMoveCommandResponse.getGameState()) {
+			case OPEN:
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
+						generateResponseCommand(ResponseCode.OPPONENT_MOVE, playerMoveCommandResponse.getColNumber()));
+				break;
+			case DRAW:
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
+						generateResponseCommand(ResponseCode.DRAW, ResponseCode.DRAW.name()));
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
+						generateResponseCommand(ResponseCode.DRAW, ResponseCode.DRAW.name()));
+				break;
+			case RED_WIN:
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
+						generateResponseCommand(ResponseCode.RED_WIN, ResponseCode.RED_WIN.name()));
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
+						generateResponseCommand(ResponseCode.RED_WIN, ResponseCode.RED_WIN.name()));
+				break;
+			case YELLOW_WIN:
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
+						generateResponseCommand(ResponseCode.YELLOW_WIN, ResponseCode.YELLOW_WIN.name()));
+				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
+						generateResponseCommand(ResponseCode.YELLOW_WIN, ResponseCode.YELLOW_WIN.name()));
+				break;
+			default:
+				throw new RuntimeException("Bug! Invalid GameState.");
+			}
+
 		} catch (GameNotExistException | IsNotYourMoveException | CellColumnIsFullException
-				| InvalidColumnNumberException e) {
+				| InvalidColumnNumberException | GameEndedException e) {
 			messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
 					generateResponseCommand(ResponseCode.ERROR, e.getMessage()));
 		}
@@ -93,6 +120,10 @@ public class WebSocketGameController {
 				generateResponseCommand(ResponseCode.GAME_STARTED, CellState.RED.name()));
 		messagingTemplate.convertAndSend(TOKEN_MESSAGE + opponent.getValue(),
 				generateResponseCommand(ResponseCode.GAME_STARTED, CellState.YELLOW.name()));
+	}
+
+	private ResponseStatusCommand generateResponseCommand(ResponseCode responseCode, int message) {
+		return generateResponseCommand(responseCode, String.valueOf(message));
 	}
 
 	private ResponseStatusCommand generateResponseCommand(ResponseCode responseCode, String message) {

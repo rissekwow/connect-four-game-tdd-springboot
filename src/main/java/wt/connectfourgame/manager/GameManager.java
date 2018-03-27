@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import wt.connectfourgame.command.GameEndedException;
 import wt.connectfourgame.command.PlayerMoveCommand;
 import wt.connectfourgame.command.RegisterCommand;
 import wt.connectfourgame.entity.GameEntity;
@@ -73,7 +74,7 @@ public class GameManager {
 	}
 
 	public PlayerMoveCommand progressMove(PlayerMoveCommand playerMoveCommand) throws GameNotExistException,
-			IsNotYourMoveException, CellColumnIsFullException, InvalidColumnNumberException {
+			IsNotYourMoveException, CellColumnIsFullException, InvalidColumnNumberException, GameEndedException {
 		Optional<GameEntity> gameEntity = gameEntityRepository.findByPlayerRedToken(playerMoveCommand.getToken());
 		boolean isRedPlayer = gameEntity.isPresent();
 		if (!gameEntity.isPresent())
@@ -83,6 +84,8 @@ public class GameManager {
 		GameEntity entity = gameEntity.get();
 		if (isRedPlayer != entity.isRedMove())
 			throw new IsNotYourMoveException();
+		if (!entity.getGameState().equals(GameState.OPEN))
+			throw new GameEndedException(entity.getGameState());
 		Board board = boardSerializator.deserializeBytesToBoard(entity.getSerializedBoard());
 		board.addCell(playerMoveCommand.getColNumber(), isRedPlayer ? CellState.RED : CellState.YELLOW);
 		GameState gameState = board.getGameState();
@@ -90,11 +93,15 @@ public class GameManager {
 		entity.setRedMove(!isRedPlayer);
 		entity.setSerializedBoard(boardSerializator.serializeBoardToBytes(board));
 		gameEntityRepository.save(entity);
+		if (!entity.getGameState().equals(GameState.OPEN)) {
+			opponentQueue.removeNicknameByToken(entity.getPlayerRedToken());
+			opponentQueue.removeNicknameByToken(entity.getPlayerYellowToken());
+		}
 
 		PlayerMoveCommand playerMoveCommandResponse = new PlayerMoveCommand();
 		playerMoveCommandResponse.setColNumber(playerMoveCommand.getColNumber());
 		playerMoveCommandResponse.setToken(isRedPlayer ? entity.getPlayerYellowToken() : entity.getPlayerRedToken());
-		playerMoveCommandResponse.setGameState(gameState.name());
+		playerMoveCommandResponse.setGameState(gameState);
 
 		return playerMoveCommandResponse;
 	}
