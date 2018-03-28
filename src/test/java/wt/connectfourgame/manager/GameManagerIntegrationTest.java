@@ -11,10 +11,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import info.solidsoft.mockito.java8.api.WithBDDMockito;
-import wt.connectfourgame.command.GameEndedException;
 import wt.connectfourgame.command.PlayerMoveCommand;
 import wt.connectfourgame.entity.GameEntity;
 import wt.connectfourgame.exception.CellColumnIsFullException;
+import wt.connectfourgame.exception.GameEndedException;
 import wt.connectfourgame.exception.GameNotExistException;
 import wt.connectfourgame.exception.InvalidColumnNumberException;
 import wt.connectfourgame.exception.IsNotYourMoveException;
@@ -26,7 +26,7 @@ import wt.connectfourgame.serialize.BoardSerializator;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
-public class GameManagerTest implements WithAssertions, WithBDDMockito {
+public class GameManagerIntegrationTest implements WithAssertions, WithBDDMockito {
 
 	private final String TOKEN_RED_TEST = UUID.randomUUID().toString();
 	private final String TOKEN_YELLOW_TEST = UUID.randomUUID().toString();

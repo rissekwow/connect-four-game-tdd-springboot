@@ -8,12 +8,12 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
 
-import wt.connectfourgame.command.GameEndedException;
 import wt.connectfourgame.command.PlayerMoveCommand;
 import wt.connectfourgame.command.RegisterCommand;
 import wt.connectfourgame.command.ResponseCode;
 import wt.connectfourgame.command.ResponseStatusCommand;
 import wt.connectfourgame.exception.CellColumnIsFullException;
+import wt.connectfourgame.exception.GameEndedException;
 import wt.connectfourgame.exception.GameNotExistException;
 import wt.connectfourgame.exception.InvalidColumnNumberException;
 import wt.connectfourgame.exception.IsNotYourMoveException;
@@ -43,6 +43,15 @@ public class WebSocketGameController {
 			gameManager.addNicknameToWaitingQueue(registerCommand.getNickname());
 		opponent.ifPresent(o -> createNewGameAndSendMessagesToPlayers(registerCommand, o));
 	}
+	
+	@MessageMapping("/disconnect")
+	public void registerDisconnect(RegisterCommand registerCommand) {
+		registerNicknameAndSendTokenOrErrorResponse(registerCommand);
+		Optional<Entry<String, String>> opponent = gameManager.findOpponent();
+		if (!opponent.isPresent())
+			gameManager.addNicknameToWaitingQueue(registerCommand.getNickname());
+		opponent.ifPresent(o -> createNewGameAndSendMessagesToPlayers(registerCommand, o));
+	}
 
 	@MessageMapping("/move")
 	public void processGameMove(PlayerMoveCommand playerMoveCommand) {
@@ -50,26 +59,16 @@ public class WebSocketGameController {
 			PlayerMoveCommand playerMoveCommandResponse = gameManager.progressMove(playerMoveCommand);
 			switch (playerMoveCommandResponse.getGameState()) {
 			case OPEN:
-				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
-						generateResponseCommand(ResponseCode.OPPONENT_MOVE, playerMoveCommandResponse.getColNumber()));
+				sendMoveResponseToOpponentPlayer(playerMoveCommandResponse);
 				break;
 			case DRAW:
-				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
-						generateResponseCommand(ResponseCode.DRAW, ResponseCode.DRAW.name()));
-				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
-						generateResponseCommand(ResponseCode.DRAW, ResponseCode.DRAW.name()));
+				sendDrawResponseToBothPlayers(playerMoveCommand, playerMoveCommandResponse);
 				break;
 			case RED_WIN:
-				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
-						generateResponseCommand(ResponseCode.RED_WIN, ResponseCode.RED_WIN.name()));
-				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
-						generateResponseCommand(ResponseCode.RED_WIN, ResponseCode.RED_WIN.name()));
+				sendPlayerRedWinToBothPlayers(playerMoveCommand, playerMoveCommandResponse);
 				break;
 			case YELLOW_WIN:
-				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
-						generateResponseCommand(ResponseCode.YELLOW_WIN, ResponseCode.YELLOW_WIN.name()));
-				messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
-						generateResponseCommand(ResponseCode.YELLOW_WIN, ResponseCode.YELLOW_WIN.name()));
+				sendYellowPlayerWinToBothPlayers(playerMoveCommand, playerMoveCommandResponse);
 				break;
 			default:
 				throw new RuntimeException("Bug! Invalid GameState.");
@@ -77,9 +76,42 @@ public class WebSocketGameController {
 
 		} catch (GameNotExistException | IsNotYourMoveException | CellColumnIsFullException
 				| InvalidColumnNumberException | GameEndedException e) {
-			messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
-					generateResponseCommand(ResponseCode.ERROR, e.getMessage()));
+			sendErrorResponseToCurrentPlayer(playerMoveCommand.getToken(), e);
 		}
+	}
+
+	private void sendErrorResponseToCurrentPlayer(String playerMoveToken, Exception e) {
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveToken,
+				generateResponseCommand(ResponseCode.ERROR, e.getMessage()));
+	}
+
+	private void sendYellowPlayerWinToBothPlayers(PlayerMoveCommand playerMoveCommand,
+			PlayerMoveCommand playerMoveCommandResponse) {
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
+				generateResponseCommand(ResponseCode.YELLOW_WIN, ResponseCode.YELLOW_WIN.name()));
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
+				generateResponseCommand(ResponseCode.YELLOW_WIN, ResponseCode.YELLOW_WIN.name()));
+	}
+
+	private void sendPlayerRedWinToBothPlayers(PlayerMoveCommand playerMoveCommand,
+			PlayerMoveCommand playerMoveCommandResponse) {
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
+				generateResponseCommand(ResponseCode.RED_WIN, ResponseCode.RED_WIN.name()));
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
+				generateResponseCommand(ResponseCode.RED_WIN, ResponseCode.RED_WIN.name()));
+	}
+
+	private void sendDrawResponseToBothPlayers(PlayerMoveCommand playerMoveCommand,
+			PlayerMoveCommand playerMoveCommandResponse) {
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommand.getToken(),
+				generateResponseCommand(ResponseCode.DRAW, ResponseCode.DRAW.name()));
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
+				generateResponseCommand(ResponseCode.DRAW, ResponseCode.DRAW.name()));
+	}
+
+	private void sendMoveResponseToOpponentPlayer(PlayerMoveCommand playerMoveCommandResponse) {
+		messagingTemplate.convertAndSend(TOKEN_MESSAGE + playerMoveCommandResponse.getToken(),
+				generateResponseCommand(ResponseCode.OPPONENT_MOVE, playerMoveCommandResponse.getColNumber()));
 	}
 
 	private void createNewGameAndSendMessagesToPlayers(RegisterCommand registerCommand,
