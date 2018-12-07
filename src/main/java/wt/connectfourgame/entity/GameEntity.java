@@ -23,6 +23,7 @@ public class GameEntity {
 
 	private boolean isRedMove;
 
+
 	@Enumerated(EnumType.STRING)
 	private GameState gameState;
 

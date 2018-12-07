@@ -3,7 +3,9 @@ package wt.connectfourgame.controller;
 import java.util.Map.Entry;
 import java.util.Optional;
 
+import org.dom4j.Document;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.Printer;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
@@ -37,15 +39,19 @@ public class WebSocketGameController {
 
 	@MessageMapping("/register")
 	public void registerUserInQueue(RegisterCommand registerCommand) {
+		System.out.println(registerCommand.getNickname());
 		registerNicknameAndSendTokenOrErrorResponse(registerCommand);
 		Optional<Entry<String, String>> opponent = gameManager.findOpponent();
 		if (!opponent.isPresent())
 			gameManager.addNicknameToWaitingQueue(registerCommand.getNickname());
-		opponent.ifPresent(o -> createNewGameAndSendMessagesToPlayers(registerCommand, o));
+		
+		opponent.ifPresent(o -> 
+		createNewGameAndSendMessagesToPlayers(registerCommand, o));
 	}
-	
+
 	@MessageMapping("/disconnect")
 	public void registerDisconnect(RegisterCommand registerCommand) {
+		System.out.println("Disconnected "+registerCommand.getNickname());
 		registerNicknameAndSendTokenOrErrorResponse(registerCommand);
 		Optional<Entry<String, String>> opponent = gameManager.findOpponent();
 		if (!opponent.isPresent())
@@ -116,6 +122,11 @@ public class WebSocketGameController {
 
 	private void createNewGameAndSendMessagesToPlayers(RegisterCommand registerCommand,
 			Entry<String, String> opponent) {
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			
+		}
 		String playerToken = gameManager.getNicknameToken(registerCommand.getNickname());
 		boolean isRegisterPlayerRed = gameManager.areYouRedPlayer();
 		if (isRegisterPlayerRed)
@@ -128,6 +139,7 @@ public class WebSocketGameController {
 		try {
 			gameManager.registerNickname(registerCommand);
 			String nicknameToken = gameManager.getNicknameToken(registerCommand.getNickname());
+			System.out.println("Sended to "+USER_NICKNAME_LISTENER + registerCommand.getNickname());
 			messagingTemplate.convertAndSend(USER_NICKNAME_LISTENER + registerCommand.getNickname(),
 					generateResponseCommand(ResponseCode.TOKEN_REGISTERED, nicknameToken));
 		} catch (NicknameIsAlreadyInUseException e) {
@@ -164,5 +176,7 @@ public class WebSocketGameController {
 		responseStatusCommand.setMessage(message);
 		return responseStatusCommand;
 	}
+
+
 
 }
